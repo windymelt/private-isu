@@ -69,6 +69,9 @@ jrebel.lic
 .metals
 .bloop
 project/metals.sbt
+.bsp
 
 # paulp script
 /.lib/
+
+.vscode
