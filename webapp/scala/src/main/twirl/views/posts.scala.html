@@ -1,0 +1,10 @@
+@(postResults: Seq[PostResult])(
+    implicit session: javax.servlet.http.HttpSession,
+    xkey: String @@ XSRFKey,
+    xtoken: String @@ XSRFToken)
+
+<div class="isu-posts">
+    @postResults.map { p =>
+    @post(p)
+    }
+</div>

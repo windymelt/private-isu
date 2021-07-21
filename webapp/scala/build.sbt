@@ -24,9 +24,27 @@ lazy val hello = (project in file("."))
       "org.scalikejdbc" %% "scalikejdbc-test" % "3.5.0" % "test",
       // 今回はapplication.confに接続・コネクションプールの設定を記述する．
       // それを読み取るためのパッケージ
-      "org.scalikejdbc" %% "scalikejdbc-config" % "3.5.0"
+      "org.scalikejdbc" %% "scalikejdbc-config" % "3.5.0",
+      // autoConstruct macro
+      "org.scalikejdbc" %% "scalikejdbc-syntax-support-macro" % "3.5.0",
+      "org.scalikejdbc" %% "scalikejdbc-joda-time" % "3.5.0" // use joda time / nscalatime
     )
   )
 
 enablePlugins(SbtTwirl)
 enablePlugins(JettyPlugin)
+
+TwirlKeys.templateImports ++= Seq(
+  "com.isu.scala.helpers._",
+  "com.isu.scala.Types._",
+  "com.isu.scala.model._"
+)
+
+// task
+import scala.sys.process._ 
+
+lazy val initializedb = taskKey[Unit]("Initialize DB")
+
+initializedb := {
+    "./initialize-docker-db.sh" !
+}
