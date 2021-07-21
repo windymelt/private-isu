@@ -5,7 +5,7 @@ import sys.process._
 
 
 object Digest {
-  private[this] val rand = SecureRandom.getInstance("NativePRNGNonBlocking")
+  val rand = SecureRandom.getInstance("NativePRNGNonBlocking")
 
   def digest(src: String): String = {
     (Process("printf", Seq("%s", src)) #|

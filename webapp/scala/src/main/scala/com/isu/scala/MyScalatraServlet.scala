@@ -1,17 +1,21 @@
 package com.isu.scala
 
 import org.scalatra._
+import org.scalatra.forms.{ views => _, _ }
 import scalikejdbc._
 
 import model.{User, Post, PostResult, Comment, CommentResult}
 import Config._
 import Types._
+import org.scalatra.i18n.I18nSupport
 
 class MyScalatraServlet
     extends ScalatraServlet
     with XsrfTokenSupport
     with FlashMapSupport
-    with DBService {
+    with DBService
+    with FormSupport
+    with I18nSupport {
 
   def makePostResults(
       posts: Seq[Post],
@@ -83,8 +87,8 @@ class MyScalatraServlet
   }
 
   // ok GET     /initialize                 initialize()
-  // GET     /login                      showLogin()
-  // POST    /login                      newLogin()
+  // ok GET     /login                      showLogin()
+  // ok POST    /login                      newLogin()
   // GET     /register                   showRegister()
   // POST    /register                   register()
   // GET     /logout                     logout()
@@ -134,5 +138,39 @@ class MyScalatraServlet
       case Some(_) => Found("/")
       case _ => Ok(views.html.login(None))
     }
+  }
+
+  case class LoginData(accountName: String, password: String)
+  val loginForm = mapping(
+    "account_name" -> text(required),
+    "password" -> text(required)
+  )(LoginData.apply)
+
+  post("/login") {
+      getSessionUser match {
+          case Some(_) => Found("/")
+          case _ =>
+          validate(loginForm)(
+              (err: Seq[(String, String)]) => BadRequest(err),
+              form => {
+                  import User.u
+                  DB readOnly { implicit session =>
+                  sql"SELECT ${u.resultAll} FROM ${User as u} WHERE ${u.accountName} = ${form.accountName} AND ${u.delFlg} = 0"
+                  .map(User(_))
+                  .first()
+                  .apply() match {
+                      case Some(user: User)
+                      if Digest.calculatePasshash(user.accountName, form.password) == user.passhash => {
+                          session("user") = user.id.toString
+                          Found("/")      
+                      }
+                      case _ => {
+                        flash("notice") = "アカウント名かパスワードが間違っています"
+                        Found("/login")
+                      }   
+                  }
+              }
+          }) 
+      }
   }
 }
