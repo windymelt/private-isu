@@ -89,7 +89,7 @@ class MyScalatraServlet
   // ok GET     /initialize                 initialize()
   // ok GET     /login                      showLogin()
   // ok POST    /login                      newLogin()
-  // GET     /register                   showRegister()
+  // ok GET     /register                   showRegister()
   // POST    /register                   register()
   // GET     /logout                     logout()
   // ok GET     /                           index()
@@ -172,5 +172,13 @@ class MyScalatraServlet
               }
           }) 
       }
+  }
+
+  get("/register") {
+    implicit val f = flash
+    getSessionUser match {
+      case Some(_) => Found("/")
+      case _ => Ok(views.html.register(None))
+    }
   }
 }
