@@ -82,6 +82,23 @@ class MyScalatraServlet
     }
   }
 
+  // ok GET     /initialize                 initialize()
+  // GET     /login                      showLogin()
+  // POST    /login                      newLogin()
+  // GET     /register                   showRegister()
+  // POST    /register                   register()
+  // GET     /logout                     logout()
+  // ok GET     /                           index()
+  // GET     /@:accountName              showAccount(accountName: String)
+  // GET     /posts                      posts()
+  // GET     /posts/:id                  showPost(id: Int)
+  // POST    /                           createPost()
+  // GET     /image/:id.:ext             showImage(id: Int, ext: String)
+  // POST    /comment                    createComment()
+  // GET     /admin/banned               banned()
+  // POST    /admin/banned               ban()
+  // GET     /*file                      AssetsController.at(file)
+
   xsrfGuard("/")
   get("/") {
     import Post.p
@@ -100,4 +117,22 @@ class MyScalatraServlet
     }
   }
 
+  get("/initialize") {
+    DB autoCommit { implicit session =>
+      sql"DELETE FROM users WHERE id > 1000".execute().apply()
+      sql"DELETE FROM posts WHERE id > 10000".execute().apply()
+      sql"DELETE FROM comments WHERE id > 100000".execute().apply()
+      sql"UPDATE users SET del_flg = 0".execute().apply()
+      sql"UPDATE users SET del_flg = 1 WHERE id % 50 = 0".execute().apply()
+    }
+    Ok
+  }
+
+  get("/login") {
+    implicit val f = flash
+    getSessionUser match {
+      case Some(_) => Found("/")
+      case _ => Ok(views.html.login(None))
+    }
+  }
 }
