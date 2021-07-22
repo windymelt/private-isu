@@ -407,4 +407,39 @@ class MyScalatraServlet
       }
     }
   }
+
+  get("/image/:id.:ext") {
+    import Post.p
+
+    val id = params("id")
+    val ext = params("ext")
+
+    if (id == 0) {
+      Ok("")
+    } else {
+      DB readOnly { implicit session =>
+        sql"SELECT ${p.resultAll} FROM ${Post as p} WHERE ${p.id} = ${id}"
+          .map(Post(_))
+          .first()
+          .apply() match {
+          case None =>
+            NotFound()
+          case Some(post) =>
+            if (
+              (ext, post.mime) match {
+                case ("jpg", "image/jpeg") => true
+                case ("png", "image/png")  => true
+                case ("gif", "image/gif")  => true
+                case _                     => false
+              }
+            ) {
+              contentType = post.mime
+              Ok(post.imgdata)
+            } else {
+              NotFound()
+            }
+        }
+      }
+    }
+  }
 }
