@@ -443,6 +443,7 @@ class MyScalatraServlet
     }
   }
 
+  // TODO: xsrfguardにひっかかったときのstatus code合わせる必要ある?
   xsrfGuard("/comment")
   post("/comment") {
     import helpers._
