@@ -90,7 +90,7 @@ class MyScalatraServlet
   // ok GET     /login                      showLogin()
   // ok POST    /login                      newLogin()
   // ok GET     /register                   showRegister()
-  // POST    /register                   register()
+  // ok POST    /register                   register()
   // GET     /logout                     logout()
   // ok GET     /                           index()
   // GET     /@:accountName              showAccount(accountName: String)
@@ -179,6 +179,41 @@ class MyScalatraServlet
     getSessionUser match {
       case Some(_) => Found("/")
       case _ => Ok(views.html.register(None))
+    }
+  }
+
+  case class RegistrationData(accountName: String, password: String)
+  val registrationForm = mapping(
+    "account_name" -> text(required, minlength(3)),
+    "password" -> text(required, minlength(6))
+  )(RegistrationData.apply)
+  post("/register") {
+    DB autoCommit { implicit session =>
+      getSessionUser match {
+        case Some(_) => Found("/")
+        case _ =>
+          validate(registrationForm)(
+            (err) => {
+                flash("notice") = "アカウント名は3文字以上、パスワードは6文字以上である必要があります"
+                Found("/register")
+            },
+            (form) => {
+                if (sql"SELECT 1 FROM users WHERE `account_name` = ${form.accountName}"
+                .map(_.int(1)).first().apply().nonEmpty) {
+                    flash("notice") = "アカウント名がすでに使われています"
+                    Found("/register")
+                } else {
+                    val passhash = Digest.calculatePasshash(form.accountName, form.password)
+                    val id =
+                    sql"INSERT INTO `users` (`account_name`, `passhash`) VALUES (${form.accountName}, ${passhash})"
+                    .updateAndReturnGeneratedKey()
+                    .apply()
+
+                    session("user") = id.toString
+                    Found("/")                
+                }
+            })
+        }
     }
   }
 }
