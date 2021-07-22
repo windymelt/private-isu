@@ -14,6 +14,7 @@ import org.scalatra.servlet.{
   SizeConstraintExceededException
 }
 import java.nio.file.Files
+import java.io.File
 
 class MyScalatraServlet
     extends ScalatraServlet
@@ -112,7 +113,7 @@ class MyScalatraServlet
   // ok POST    /comment                    createComment()
   // ok GET     /admin/banned               banned()
   // ok POST    /admin/banned               ban()
-  // GET     /*file                      AssetsController.at(file)
+  // ok GET     /*file                      AssetsController.at(file)
 
   xsrfGuard("/")
   get("/") {
@@ -506,6 +507,20 @@ class MyScalatraServlet
             .apply()
         }
         Found("/admin/banned")
+    }
+  }
+
+  private val rootPath = conf.getString("isu.public.dir")
+  get("/:path") {
+    val file = params("path")
+    val fileToServe = new File(rootPath, file)
+
+    if (fileToServe.exists) {
+      response.setHeader("Cache-Control", "max-age=3600")
+      response.setHeader("Content-Disposition", "inline")
+      Ok(fileToServe)
+    } else {
+      NotFound()
     }
   }
 }
