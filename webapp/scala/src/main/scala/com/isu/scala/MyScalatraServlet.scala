@@ -293,4 +293,24 @@ class MyScalatraServlet
       }
     }
   }
+
+  get("/posts") {
+    import com.github.nscala_time.time.Imports._
+    import Post.p
+
+    val maxCreatedAt = params.get("max_created_at") map { param: String =>
+        DateTime.parse(param)
+    }
+
+    val posts = DB readOnly { implicit session =>
+      sql"SELECT ${p.result.id}, ${p.result.userId}, ${p.result.body}, ${p.result.createdAt}, ${p.result.mime} FROM ${Post as p} WHERE ${p.createdAt} <= ${maxCreatedAt.getOrElse(null)} ORDER BY ${p.createdAt} DESC"
+        .map(Post.withoutImage)
+        .list()
+        .apply()
+    }
+
+    implicit val xkey: String @@ XSRFKey = Tag[XSRFKey](xsrfKey)
+    implicit val xtoken: String @@ XSRFToken = Tag[XSRFToken](xsrfToken)
+    Ok(views.html.posts(makePostResults(posts)))
+  }
 }
