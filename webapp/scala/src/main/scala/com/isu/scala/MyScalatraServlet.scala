@@ -141,7 +141,7 @@ class MyScalatraServlet
       sql"UPDATE users SET del_flg = 0".execute().apply()
       sql"UPDATE users SET del_flg = 1 WHERE id % 50 = 0".execute().apply()
     }
-    Ok
+    Ok()
   }
 
   get("/login") {
