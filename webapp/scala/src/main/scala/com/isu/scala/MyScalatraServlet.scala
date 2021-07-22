@@ -18,7 +18,7 @@ import java.io.File
 
 class MyScalatraServlet
     extends ScalatraServlet
-    with XsrfTokenSupport
+    with CSRF
     with FlashMapSupport
     with DBService
     with FormSupport
@@ -134,6 +134,7 @@ class MyScalatraServlet
   }
 
   get("/initialize") {
+    logger.info("initializing")
     DB autoCommit { implicit session =>
       sql"DELETE FROM users WHERE id > 1000".execute().apply()
       sql"DELETE FROM posts WHERE id > 10000".execute().apply()
@@ -141,7 +142,7 @@ class MyScalatraServlet
       sql"UPDATE users SET del_flg = 0".execute().apply()
       sql"UPDATE users SET del_flg = 1 WHERE id % 50 = 0".execute().apply()
     }
-    Ok()
+    Ok("OK!!!!!")
   }
 
   get("/login") {
