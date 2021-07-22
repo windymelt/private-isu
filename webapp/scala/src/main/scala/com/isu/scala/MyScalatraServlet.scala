@@ -1,7 +1,7 @@
 package com.isu.scala
 
 import org.scalatra._
-import org.scalatra.forms.{ views => _, _ }
+import org.scalatra.forms.{views => _, _}
 import scalikejdbc._
 
 import model.{User, Post, PostResult, Comment, CommentResult}
@@ -94,7 +94,7 @@ class MyScalatraServlet
   // ok GET     /logout                     logout()
   // ok GET     /                           index()
   // ok GET     /@:accountName              showAccount(accountName: String)
-  // GET     /posts                      posts()
+  // ok GET     /posts                      posts()
   // GET     /posts/:id                  showPost(id: Int)
   // POST    /                           createPost()
   // GET     /image/:id.:ext             showImage(id: Int, ext: String)
@@ -136,7 +136,7 @@ class MyScalatraServlet
     implicit val f = flash
     getSessionUser match {
       case Some(_) => Found("/")
-      case _ => Ok(views.html.login(None))
+      case _       => Ok(views.html.login(None))
     }
   }
 
@@ -147,38 +147,42 @@ class MyScalatraServlet
   )(LoginData.apply)
 
   post("/login") {
-      getSessionUser match {
-          case Some(_) => Found("/")
-          case _ =>
-          validate(loginForm)(
-              (err: Seq[(String, String)]) => BadRequest(err),
-              form => {
-                  import User.u
-                  DB readOnly { implicit session =>
-                  sql"SELECT ${u.resultAll} FROM ${User as u} WHERE ${u.accountName} = ${form.accountName} AND ${u.delFlg} = 0"
-                  .map(User(_))
-                  .first()
-                  .apply() match {
-                      case Some(user: User)
-                      if Digest.calculatePasshash(user.accountName, form.password) == user.passhash => {
-                          session("user") = user.id.toString
-                          Found("/")      
-                      }
-                      case _ => {
-                        flash("notice") = "アカウント名かパスワードが間違っています"
-                        Found("/login")
-                      }   
-                  }
+    getSessionUser match {
+      case Some(_) => Found("/")
+      case _ =>
+        validate(loginForm)(
+          (err: Seq[(String, String)]) => BadRequest(err),
+          form => {
+            import User.u
+            DB readOnly { implicit session =>
+              sql"SELECT ${u.resultAll} FROM ${User as u} WHERE ${u.accountName} = ${form.accountName} AND ${u.delFlg} = 0"
+                .map(User(_))
+                .first()
+                .apply() match {
+                case Some(user: User)
+                    if Digest.calculatePasshash(
+                      user.accountName,
+                      form.password
+                    ) == user.passhash => {
+                  session("user") = user.id.toString
+                  Found("/")
+                }
+                case _ => {
+                  flash("notice") = "アカウント名かパスワードが間違っています"
+                  Found("/login")
+                }
               }
-          }) 
-      }
+            }
+          }
+        )
+    }
   }
 
   get("/register") {
     implicit val f = flash
     getSessionUser match {
       case Some(_) => Found("/")
-      case _ => Ok(views.html.register(None))
+      case _       => Ok(views.html.register(None))
     }
   }
 
@@ -194,26 +198,33 @@ class MyScalatraServlet
         case _ =>
           validate(registrationForm)(
             (err) => {
-                flash("notice") = "アカウント名は3文字以上、パスワードは6文字以上である必要があります"
-                Found("/register")
+              flash("notice") = "アカウント名は3文字以上、パスワードは6文字以上である必要があります"
+              Found("/register")
             },
             (form) => {
-                if (sql"SELECT 1 FROM users WHERE `account_name` = ${form.accountName}"
-                .map(_.int(1)).first().apply().nonEmpty) {
-                    flash("notice") = "アカウント名がすでに使われています"
-                    Found("/register")
-                } else {
-                    val passhash = Digest.calculatePasshash(form.accountName, form.password)
-                    val id =
-                    sql"INSERT INTO `users` (`account_name`, `passhash`) VALUES (${form.accountName}, ${passhash})"
+              if (
+                sql"SELECT 1 FROM users WHERE `account_name` = ${form.accountName}"
+                  .map(_.int(1))
+                  .first()
+                  .apply()
+                  .nonEmpty
+              ) {
+                flash("notice") = "アカウント名がすでに使われています"
+                Found("/register")
+              } else {
+                val passhash =
+                  Digest.calculatePasshash(form.accountName, form.password)
+                val id =
+                  sql"INSERT INTO `users` (`account_name`, `passhash`) VALUES (${form.accountName}, ${passhash})"
                     .updateAndReturnGeneratedKey()
                     .apply()
 
-                    session("user") = id.toString
-                    Found("/")                
-                }
-            })
-        }
+                session("user") = id.toString
+                Found("/")
+              }
+            }
+          )
+      }
     }
   }
 
@@ -227,30 +238,58 @@ class MyScalatraServlet
     DB readOnly { implicit dbsession =>
       import User.u, Post.p
 
-      sql"SELECT ${u.resultAll} FROM ${User as u} WHERE ${u.accountName} = ${accountName} AND ${u.delFlg} = 0".map(User(_)).first().apply() match {
+      sql"SELECT ${u.resultAll} FROM ${User as u} WHERE ${u.accountName} = ${accountName} AND ${u.delFlg} = 0"
+        .map(User(_))
+        .first()
+        .apply() match {
         case None =>
           NotFound()
         case Some(user) =>
           val userId = user.id
-          val posts = sql"SELECT ${p.result.id}, ${p.result.userId}, ${p.result.body}, ${p.result.createdAt}, ${p.result.mime} FROM ${Post as p} WHERE ${p.userId} = ${userId} ORDER BY ${p.createdAt} DESC"
-            .map(Post.withoutImage).list().apply()
+          val posts =
+            sql"SELECT ${p.result.id}, ${p.result.userId}, ${p.result.body}, ${p.result.createdAt}, ${p.result.mime} FROM ${Post as p} WHERE ${p.userId} = ${userId} ORDER BY ${p.createdAt} DESC"
+              .map(Post.withoutImage)
+              .list()
+              .apply()
           val postResults = makePostResults(posts)
 
-          val commentCount = sql"SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = ${userId}".map(_.int(1)).single().apply().getOrElse(0)
+          val commentCount =
+            sql"SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = ${userId}"
+              .map(_.int(1))
+              .single()
+              .apply()
+              .getOrElse(0)
 
-          val postIds = sql"SELECT `id` FROM `posts` WHERE `user_id` = ${userId}".map(_.int(1)).list().apply()
+          val postIds =
+            sql"SELECT `id` FROM `posts` WHERE `user_id` = ${userId}"
+              .map(_.int(1))
+              .list()
+              .apply()
 
           val postCount = postIds.size
 
           val commentedCount = if (postCount > 0) {
-            sql"SELECT COUNT(*) AS count FROM `comments` WHERE `post_id` IN (${postIds})".map(_.int(1)).first().apply().getOrElse(0)
+            sql"SELECT COUNT(*) AS count FROM `comments` WHERE `post_id` IN (${postIds})"
+              .map(_.int(1))
+              .first()
+              .apply()
+              .getOrElse(0)
           } else {
             0
           }
 
           implicit val xkey: String @@ XSRFKey = Tag[XSRFKey](xsrfKey)
           implicit val xtoken: String @@ XSRFToken = Tag[XSRFToken](xsrfToken)
-          Ok(views.html.user(getSessionUser, user, postResults, postCount, commentCount, commentedCount))
+          Ok(
+            views.html.user(
+              getSessionUser,
+              user,
+              postResults,
+              postCount,
+              commentCount,
+              commentedCount
+            )
+          )
       }
     }
   }
