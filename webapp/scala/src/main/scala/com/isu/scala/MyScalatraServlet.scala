@@ -109,7 +109,7 @@ class MyScalatraServlet
   // ok GET     /posts/:id                  showPost(id: Int)
   // ok POST    /                           createPost()
   // ok GET     /image/:id.:ext             showImage(id: Int, ext: String)
-  // POST    /comment                    createComment()
+  // ok POST    /comment                    createComment()
   // GET     /admin/banned               banned()
   // POST    /admin/banned               ban()
   // GET     /*file                      AssetsController.at(file)
@@ -440,6 +440,31 @@ class MyScalatraServlet
             }
         }
       }
+    }
+  }
+
+  xsrfGuard("/comment")
+  post("/comment") {
+    import helpers._
+    getSessionUser match {
+      case None =>
+        Found("/login")
+      case Some(me) =>
+        params("post_id") match {
+          case s if s.matches("""\A[0-9]+\z""") =>
+            val comment = params("comment")
+            val postId = s.toInt
+            DB autoCommit { implicit session =>
+              sql"INSERT INTO `comments` (`post_id`, `user_id`, `comment`) VALUES (${postId}, ${me.id}, ${comment})"
+                .execute()
+                .apply()
+            }
+
+            Found(s"/posts/$postId")
+          case _ =>
+            // Rubyに合わせてるが、これ200でいいなの？
+            Ok("post_idは整数のみです")
+        }
     }
   }
 }
