@@ -91,7 +91,7 @@ class MyScalatraServlet
   // ok POST    /login                      newLogin()
   // ok GET     /register                   showRegister()
   // ok POST    /register                   register()
-  // GET     /logout                     logout()
+  // ok GET     /logout                     logout()
   // ok GET     /                           index()
   // GET     /@:accountName              showAccount(accountName: String)
   // GET     /posts                      posts()
@@ -215,5 +215,10 @@ class MyScalatraServlet
             })
         }
     }
+  }
+
+  get("/logout") {
+    session.invalidate()
+    Found("/")
   }
 }
