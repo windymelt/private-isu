@@ -111,7 +111,7 @@ class MyScalatraServlet
   // ok GET     /image/:id.:ext             showImage(id: Int, ext: String)
   // ok POST    /comment                    createComment()
   // ok GET     /admin/banned               banned()
-  // POST    /admin/banned               ban()
+  // ok POST    /admin/banned               ban()
   // GET     /*file                      AssetsController.at(file)
 
   xsrfGuard("/")
@@ -489,6 +489,23 @@ class MyScalatraServlet
               .apply()
           Ok(views.html.banned(Some(me), users))
         }
+    }
+  }
+
+  xsrfGuard("/admin/banned")
+  post("/admin/banned") {
+    getSessionUser match {
+      case None =>
+        Found("/")
+      case Some(me) if !me.authority =>
+        Forbidden()
+      case Some(me) =>
+        DB autoCommit { implicit session =>
+          sql"UPDATE `users` SET `del_flg` = 1 WHERE `id` = ${params("uid").toInt}"
+            .executeUpdate()
+            .apply()
+        }
+        Found("/admin/banned")
     }
   }
 }
