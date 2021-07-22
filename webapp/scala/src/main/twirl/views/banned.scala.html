@@ -1,0 +1,20 @@
+@(maybeMe: Option[User], users: Seq[User])(implicit session: javax.servlet.http.HttpSession,
+xkey: String @@ XSRFKey,
+xtoken: String @@ XSRFToken)
+
+@main(maybeMe) {
+<div>
+    <form method="post" action="/admin/banned">
+        @users.map { user =>
+        <div>
+            <input type="checkbox" name="uid[]" id="uid_@user.id" value="@user.id"
+                data-account-name="@user.accountName"><label for="uid_@user.id">@user.accountName</label>
+        </div>
+        }
+        <div class="form-submit">
+            <input type="hidden" name="@xkey" value="@xtoken">
+            <input type="submit" name="submit" value="submit">
+        </div>
+    </form>
+</div>
+}

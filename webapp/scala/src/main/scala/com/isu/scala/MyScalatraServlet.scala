@@ -110,7 +110,7 @@ class MyScalatraServlet
   // ok POST    /                           createPost()
   // ok GET     /image/:id.:ext             showImage(id: Int, ext: String)
   // ok POST    /comment                    createComment()
-  // GET     /admin/banned               banned()
+  // ok GET     /admin/banned               banned()
   // POST    /admin/banned               ban()
   // GET     /*file                      AssetsController.at(file)
 
@@ -465,6 +465,29 @@ class MyScalatraServlet
           case _ =>
             // Rubyに合わせてるが、これ200でいいなの？
             Ok("post_idは整数のみです")
+        }
+    }
+  }
+
+  get("/admin/banned") {
+    import User.u
+
+    getSessionUser match {
+      case None =>
+        Found("/")
+      case Some(me) if !me.authority =>
+        Forbidden()
+      case Some(me) =>
+        DB readOnly { implicit dbsession =>
+          implicit val xkey: String @@ XSRFKey = Tag[XSRFKey](xsrfKey)
+          implicit val xtoken: String @@ XSRFToken = Tag[XSRFToken](xsrfToken)
+
+          val users =
+            sql"SELECT ${u.resultAll} FROM ${User as u} WHERE ${u.authority} = 0 AND ${u.delFlg} = 0 ORDER BY ${u.createdAt} DESC"
+              .map(User(_))
+              .list()
+              .apply()
+          Ok(views.html.banned(Some(me), users))
         }
     }
   }
