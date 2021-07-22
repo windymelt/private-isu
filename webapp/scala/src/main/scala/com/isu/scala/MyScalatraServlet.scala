@@ -93,7 +93,7 @@ class MyScalatraServlet
   // ok POST    /register                   register()
   // ok GET     /logout                     logout()
   // ok GET     /                           index()
-  // GET     /@:accountName              showAccount(accountName: String)
+  // ok GET     /@:accountName              showAccount(accountName: String)
   // GET     /posts                      posts()
   // GET     /posts/:id                  showPost(id: Int)
   // POST    /                           createPost()
@@ -220,5 +220,38 @@ class MyScalatraServlet
   get("/logout") {
     session.invalidate()
     Found("/")
+  }
+
+  get("/@:accountName") {
+    val accountName = params("accountName")
+    DB readOnly { implicit dbsession =>
+      import User.u, Post.p
+
+      sql"SELECT ${u.resultAll} FROM ${User as u} WHERE ${u.accountName} = ${accountName} AND ${u.delFlg} = 0".map(User(_)).first().apply() match {
+        case None =>
+          NotFound()
+        case Some(user) =>
+          val userId = user.id
+          val posts = sql"SELECT ${p.result.id}, ${p.result.userId}, ${p.result.body}, ${p.result.createdAt}, ${p.result.mime} FROM ${Post as p} WHERE ${p.userId} = ${userId} ORDER BY ${p.createdAt} DESC"
+            .map(Post.withoutImage).list().apply()
+          val postResults = makePostResults(posts)
+
+          val commentCount = sql"SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = ${userId}".map(_.int(1)).single().apply().getOrElse(0)
+
+          val postIds = sql"SELECT `id` FROM `posts` WHERE `user_id` = ${userId}".map(_.int(1)).list().apply()
+
+          val postCount = postIds.size
+
+          val commentedCount = if (postCount > 0) {
+            sql"SELECT COUNT(*) AS count FROM `comments` WHERE `post_id` IN (${postIds})".map(_.int(1)).first().apply().getOrElse(0)
+          } else {
+            0
+          }
+
+          implicit val xkey: String @@ XSRFKey = Tag[XSRFKey](xsrfKey)
+          implicit val xtoken: String @@ XSRFToken = Tag[XSRFToken](xsrfToken)
+          Ok(views.html.user(getSessionUser, user, postResults, postCount, commentCount, commentedCount))
+      }
+    }
   }
 }
