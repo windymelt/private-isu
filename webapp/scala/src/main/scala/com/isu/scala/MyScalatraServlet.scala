@@ -95,7 +95,7 @@ class MyScalatraServlet
   // ok GET     /                           index()
   // ok GET     /@:accountName              showAccount(accountName: String)
   // ok GET     /posts                      posts()
-  // GET     /posts/:id                  showPost(id: Int)
+  // ok GET     /posts/:id                  showPost(id: Int)
   // POST    /                           createPost()
   // GET     /image/:id.:ext             showImage(id: Int, ext: String)
   // POST    /comment                    createComment()
@@ -312,5 +312,24 @@ class MyScalatraServlet
     implicit val xkey: String @@ XSRFKey = Tag[XSRFKey](xsrfKey)
     implicit val xtoken: String @@ XSRFToken = Tag[XSRFToken](xsrfToken)
     Ok(views.html.posts(makePostResults(posts)))
+  }
+
+  get("/posts/:id") {
+    import Post.p
+
+    val id = params("id")
+
+    DB readOnly { implicit dbsession =>
+      val posts = sql"SELECT ${p.resultAll} FROM ${Post as p} WHERE ${p.id} = ${id}".map(Post(_)).list().apply()
+      val postResults = makePostResults(posts, allComments = true)
+
+      implicit val xkey: String @@ XSRFKey = Tag[XSRFKey](xsrfKey)
+      implicit val xtoken: String @@ XSRFToken = Tag[XSRFToken](xsrfToken)
+
+      postResults match {
+        case head +: _ => Ok(views.html.main(getSessionUser)(views.html.post(head)))
+        case _ => NotFound()
+      }
+    }
   }
 }
