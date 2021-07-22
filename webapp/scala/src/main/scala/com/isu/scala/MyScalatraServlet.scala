@@ -8,6 +8,8 @@ import model.{User, Post, PostResult, Comment, CommentResult}
 import Config._
 import Types._
 import org.scalatra.i18n.I18nSupport
+import org.scalatra.servlet.{FileUploadSupport, MultipartConfig, SizeConstraintExceededException}
+import java.nio.file.Files
 
 class MyScalatraServlet
     extends ScalatraServlet
@@ -15,7 +17,10 @@ class MyScalatraServlet
     with FlashMapSupport
     with DBService
     with FormSupport
-    with I18nSupport {
+    with I18nSupport
+    with FileUploadSupport {
+
+  configureMultipartHandling(MultipartConfig(maxFileSize = Some(conf.getLong("app.tuning.uploadLimit"))))
 
   def makePostResults(
       posts: Seq[Post],
@@ -96,7 +101,7 @@ class MyScalatraServlet
   // ok GET     /@:accountName              showAccount(accountName: String)
   // ok GET     /posts                      posts()
   // ok GET     /posts/:id                  showPost(id: Int)
-  // POST    /                           createPost()
+  // ok POST    /                           createPost()
   // GET     /image/:id.:ext             showImage(id: Int, ext: String)
   // POST    /comment                    createComment()
   // GET     /admin/banned               banned()
@@ -154,7 +159,7 @@ class MyScalatraServlet
           (err: Seq[(String, String)]) => BadRequest(err),
           form => {
             import User.u
-            DB readOnly { implicit session =>
+            DB readOnly { implicit dbsession =>
               sql"SELECT ${u.resultAll} FROM ${User as u} WHERE ${u.accountName} = ${form.accountName} AND ${u.delFlg} = 0"
                 .map(User(_))
                 .first()
@@ -338,4 +343,59 @@ class MyScalatraServlet
       }
     }
   }
+
+  xsrfGuard("/")
+  post("/") {
+    getSessionUser match {
+      case None => Found("/login")
+      case Some(me) => {
+          val files = fileMultiParams("file")
+          files match {
+              case Seq() => {
+                  flash("notice") = "画像が必須です"
+                  Found("/")
+              }
+              case Seq(file) => {
+                  file match {
+                      case f if !f.contentType.exists(t => t.contains("jpeg") || t.contains("png") || t.contains("gif")) => {
+                          flash("notice") = "投稿できる画像形式はjpgとpngとgifだけです"
+                          Found("/")
+                      }
+                      case f if f.size > conf.getLong("app.tuning.uploadLimit") => {
+                          // たぶんここには辿り着けない
+                          flash("ファイルサイズが大きすぎます")
+                          Found("/")
+                      }
+                      case f => {
+                          val Some(contentType) = f.contentType
+                          val mime = if (contentType.contains("jpeg")) {
+                              "image/jpeg"
+                          } else if (contentType.contains("png")) {
+                              "image/png"
+                          } else if (contentType.contains("gif")) {
+                              "image/gif"
+                          } else { "" }
+                      
+                          val postBody = params("body")
+                      
+                          val tmpFile = java.io.File.createTempFile("isu", ".tmp")
+                          try {
+                              file.write(tmpFile)
+                              val bytes = Files.readAllBytes(tmpFile.toPath)
+                              val id = DB autoCommit { implicit session =>
+                                sql"INSERT INTO `posts` (`user_id`, `mime`, `imgdata`, `body`) VALUES (${me.id}, ${mime}, ${bytes}, ${postBody})"
+                                .updateAndReturnGeneratedKey()
+                                .apply()
+                            }
+                            Found(s"/posts/${id.toInt}")
+                        } finally {
+                            tmpFile.delete()
+                        }
+                      }
+                  }
+              }
+          }
+      }
+  }
+}
 }
