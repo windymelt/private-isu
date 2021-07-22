@@ -299,11 +299,12 @@ class MyScalatraServlet
     import Post.p
 
     val maxCreatedAt = params.get("max_created_at") map { param: String =>
-        DateTime.parse(param)
+      DateTime.parse(param)
     }
 
     val posts = DB readOnly { implicit session =>
-      sql"SELECT ${p.result.id}, ${p.result.userId}, ${p.result.body}, ${p.result.createdAt}, ${p.result.mime} FROM ${Post as p} WHERE ${p.createdAt} <= ${maxCreatedAt.getOrElse(null)} ORDER BY ${p.createdAt} DESC"
+      sql"SELECT ${p.result.id}, ${p.result.userId}, ${p.result.body}, ${p.result.createdAt}, ${p.result.mime} FROM ${Post as p} WHERE ${p.createdAt} <= ${maxCreatedAt
+        .getOrElse(null)} ORDER BY ${p.createdAt} DESC"
         .map(Post.withoutImage)
         .list()
         .apply()
@@ -320,14 +321,19 @@ class MyScalatraServlet
     val id = params("id")
 
     DB readOnly { implicit dbsession =>
-      val posts = sql"SELECT ${p.resultAll} FROM ${Post as p} WHERE ${p.id} = ${id}".map(Post(_)).list().apply()
+      val posts =
+        sql"SELECT ${p.resultAll} FROM ${Post as p} WHERE ${p.id} = ${id}"
+          .map(Post(_))
+          .list()
+          .apply()
       val postResults = makePostResults(posts, allComments = true)
 
       implicit val xkey: String @@ XSRFKey = Tag[XSRFKey](xsrfKey)
       implicit val xtoken: String @@ XSRFToken = Tag[XSRFToken](xsrfToken)
 
       postResults match {
-        case head +: _ => Ok(views.html.main(getSessionUser)(views.html.post(head)))
+        case head +: _ =>
+          Ok(views.html.main(getSessionUser)(views.html.post(head)))
         case _ => NotFound()
       }
     }
